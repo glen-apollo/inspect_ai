@@ -659,6 +659,7 @@ def is_registry_dict(o: object) -> TypeGuard[RegistryDict]:
 
 def registry_value(o: object) -> Any:
     from inspect_ai.model._model import Model
+    from inspect_ai.model._model_config import model_args_for_log
 
     # treat tuple as list
     if isinstance(o, tuple):
@@ -680,7 +681,7 @@ def registry_value(o: object) -> Any:
             model=str(o),
             config=jsonable_python(o.config),
             base_url=o.api.base_url,
-            model_args=o.model_args,
+            model_args=model_args_for_log(o.model_args),
         )
     else:
         return o

@@ -409,7 +409,9 @@ gcloud auth application-default login
 
 If you have authorised the CLI then no additional auth is needed for the model API. Alternatively, if you are running in [Vertex Express Mode](https://cloud.google.com/vertex-ai/generative-ai/docs/start/express-mode/overview), set `VERTEX_API_KEY` to authenticate with an Express Mode API key.
 
-You can optionally specify a custom `GOOGLE_VERTEX_BASE_URL` to override the default base URL for Vertex.
+You can optionally specify a custom `GOOGLE_VERTEX_BASE_URL` to override the default base URL for Vertex. When you do, pass the project and location as custom model args (`-M project=... -M location=...`) rather than as environment variables: `google-genai` treats a base URL outside `*.googleapis.com` as an API gateway and, unless both are passed as arguments, posts to the bare base URL with no `projects/{project}/locations/{location}/publishers/...` path (a gateway that routes on that path then rejects the request, typically with a 405).
+
+If the endpoint is a gateway which supplies the Google credential itself, pass a placeholder token with `-M access_token=unused` so that Application Default Credentials are not required. The token is sent unchanged and never refreshed, so prefer ADC over a short-lived `gcloud auth print-access-token` value when calling Vertex directly. Like `api_key`, the token is redacted from the log, so `inspect eval-retry` cannot recover it — pass it again on the retry command line.
 
 ### Safety Settings {#safety-settings}
 

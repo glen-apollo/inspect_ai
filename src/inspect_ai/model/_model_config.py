@@ -73,8 +73,8 @@ def model_config_to_model(model_config: ModelConfig) -> Model:
 def model_args_for_log(model_args: dict[str, Any]) -> dict[str, Any]:
     # redact authentication oriented model_args
     model_args = model_args.copy()
-    if "api_key" in model_args:
-        del model_args["api_key"]
+    for key in ("api_key", "access_token"):
+        model_args.pop(key, None)
     model_args = {k: v for k, v in model_args.items() if not k.startswith("aws_")}
 
     # don't try to serialise generators

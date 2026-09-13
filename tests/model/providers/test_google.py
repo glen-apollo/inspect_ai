@@ -1927,6 +1927,91 @@ def test_google_credentials_arg_rejected() -> None:
         )
 
 
+def _vertex_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+    monkeypatch.setenv("GOOGLE_CLOUD_LOCATION", "global")
+    monkeypatch.delenv("VERTEX_API_KEY", raising=False)
+
+
+def test_google_vertex_project_location_model_args_reach_the_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Passed as args (not env vars) they build the full path behind a gateway."""
+    _vertex_env(monkeypatch)
+    api = GoogleGenAIAPI(
+        model_name="vertex/gemini-2.0-flash",
+        base_url=None,
+        api_key=None,
+        project="arg-project",
+        location="us-east5",
+    )
+    assert api.model_args["project"] == "arg-project"
+    assert api.model_args["location"] == "us-east5"
+
+
+def test_google_vertex_access_token_becomes_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _vertex_env(monkeypatch)
+    api = GoogleGenAIAPI(
+        model_name="vertex/gemini-2.0-flash",
+        base_url=None,
+        api_key=None,
+        access_token="  tok-123\n",
+    )
+    assert "access_token" not in api.model_args
+    assert api.model_args["credentials"].token == "tok-123"
+
+
+def test_google_vertex_access_token_conflicts_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _vertex_env(monkeypatch)
+    with pytest.raises(PrerequisiteError, match="not both"):
+        GoogleGenAIAPI(
+            model_name="vertex/gemini-2.0-flash",
+            base_url=None,
+            api_key=None,
+            access_token="tok",
+            credentials=object(),
+        )
+    with pytest.raises(PrerequisiteError, match="express mode"):
+        GoogleGenAIAPI(
+            model_name="vertex/gemini-2.0-flash",
+            base_url=None,
+            api_key="express-key",
+            access_token="tok",
+        )
+
+
+def test_google_vertex_empty_access_token_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`-M access_token=$UNSET` parses to None; silently using ADC would leak it."""
+    _vertex_env(monkeypatch)
+    for empty in (None, "", "   "):
+        with pytest.raises(PrerequisiteError, match="empty"):
+            GoogleGenAIAPI(
+                model_name="vertex/gemini-2.0-flash",
+                base_url=None,
+                api_key=None,
+                access_token=empty,
+            )
+
+
+def test_google_access_token_rejected_on_dev_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GOOGLE_GENAI_USE_VERTEXAI", raising=False)
+    with pytest.raises(PrerequisiteError, match="only to Vertex"):
+        GoogleGenAIAPI(
+            model_name="gemini-2.0-flash",
+            base_url=None,
+            api_key=None,
+            access_token="tok",
+        )
+
+
 def test_model_client_reuses_one_ssl_context(monkeypatch: pytest.MonkeyPatch) -> None:
     """Repeated client construction must not rebuild the SSL context.
 

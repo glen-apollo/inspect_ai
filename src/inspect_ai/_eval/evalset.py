@@ -2285,7 +2285,7 @@ def to_eval_set_task(
 ) -> EvalSetTask:
     # resolve core model info
     model_name = str(ModelName(task.model))
-    model_args = task.model.model_args
+    model_args = model_args_for_log(task.model.model_args)
 
     # resolve model roles to names; a list-valued role is comma-joined (the
     # same syntax --model-role accepts, so the value round-trips through a flag)

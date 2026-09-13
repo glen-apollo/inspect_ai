@@ -323,6 +323,31 @@ class GoogleGenAIAPI(ModelAPI):
             if vertex_api_key and not self.api_key:
                 self.api_key = vertex_api_key
 
+            # `-M access_token=<token>` authenticates with that token, which (unlike a
+            # credentials object) is preserved in the get_model() memoization key. The
+            # token is sent as-is and never refreshed.
+            if "access_token" in model_args:
+                access_token = str(model_args.pop("access_token") or "").strip()
+                if "credentials" in model_args:
+                    raise PrerequisiteError(
+                        "Pass either the `access_token` or the `credentials` model arg "
+                        "for vertex, not both."
+                    )
+                if self.api_key:
+                    raise PrerequisiteError(
+                        "The `access_token` model arg cannot be combined with an API key "
+                        f"({VERTEX_API_KEY} or an explicit api_key), which selects Vertex "
+                        "express mode."
+                    )
+                if not access_token:
+                    raise PrerequisiteError(
+                        "The `access_token` model arg is empty. Check that the value you "
+                        "passed is set (e.g. -M access_token=$TOKEN)."
+                    )
+                from google.oauth2.credentials import Credentials
+
+                model_args["credentials"] = Credentials(token=access_token)  # type: ignore[no-untyped-call]  # google-auth Credentials.__init__ is untyped
+
             # When not using express mode the GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION
             # environment variables should be set, OR the 'project' and 'location' should be
             # passed within the model_args.
@@ -373,6 +398,15 @@ class GoogleGenAIAPI(ModelAPI):
                     "Gemini Developer API endpoint. Use `-M use_adc=true` with "
                     "Application Default Credentials instead (e.g. `gcloud auth "
                     "application-default login` or GOOGLE_APPLICATION_CREDENTIALS)."
+                )
+
+            # Vertex-only: the dev client takes no credentials, so an access_token
+            # would otherwise reach it as an unexpected keyword argument.
+            if "access_token" in model_args:
+                raise PrerequisiteError(
+                    "The `access_token` model arg applies only to Vertex AI. For the "
+                    "Gemini Developer API endpoint use `-M use_adc=true` with "
+                    f"Application Default Credentials, or set {GOOGLE_API_KEY}."
                 )
 
             if use_adc:

@@ -759,6 +759,9 @@
       "count": 4,
       "undescribed": 4
     },
+    "type: ignore[no-untyped-call]": {
+      "count": 1
+    },
     "type: ignore[union-attr]": {
       "count": 2,
       "undescribed": 2
